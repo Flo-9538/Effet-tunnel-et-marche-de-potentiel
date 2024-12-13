@@ -1,0 +1,16 @@
+Cahier des charges : Effet tunnel et marche de potentiel
+
+Contexte :
+
+Dans le cadre du projet python en lien avec le CMI en technologie
+quantiques, nous allons réaliser une expérience de physique quantique : cette
+expérience à pour but d’illustrer un effet de la physique quantique: l'Effet tunnel.
+
+L’effet Tunnel se produit lorsqu'une particule quantique est envoyée contre un mur. 
+La particule à alors une certaine probabilité de traverser le mur, en fonction de sa masse et de l'épaisseur du mur.
+La particule étant décrite par une fonction d'onde, grâce aux équations de Shrödinger une partie de cet onde traverse le mur.
+A l'inverse de la mécanique classique où, quand l'énergie potentiel n'est pas assez élevée, la particule ne traverse pas le mur.
+Mais en physique quantique, une partie de l'énergie potentiel traverse le mur en même temps que la fonction d'onde.
+Cela permet en observant derrière le mur d'avoir une faible probabilté de détecter la particule.
+
+en gros c'est trivial mais faudrait mettre quelques equation et le faire en latex et Mme Merconne sera contente
