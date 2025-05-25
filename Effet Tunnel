@@ -1,0 +1,204 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+from IPython.display import HTML
+
+def grilles(N=513, x_min=-10, x_max=10 ):
+    '''
+    N : nombre de point sur la grille
+    x_min : X de début ( valeur de départ )
+    x_max : x de fin ( valeur de fin )
+    '''
+
+    #grille
+    delta_x=(x_max-x_min)/(N-1) 
+    p0=-np.pi/delta_x*(1-1/N)
+    delta_p=2*np.pi/(N*delta_x)
+    x_grid=np.linspace(x_min,x_max,N)
+    p_grid = p0 + delta_p * np.arange(N)
+
+    return x_grid,p_grid
+
+x_grid,p_grid=grilles()
+
+
+def Fourier(N=513, x_min=-10, x_max=10 ):
+    '''
+    N : nombre de point sur la grille
+    x_min : X de début ( valeur de départ )
+    x_max : x de fin ( valeur de fin )
+    '''
+    x_grid,p_grid=grilles(N, x_min, x_max )
+    delta_x=(x_max-x_min)/(N-1)
+    delta_p=2*np.pi/(N*delta_x)
+
+    #matrice F 
+    F = np.zeros((N, N), dtype=complex)
+    for m in range(N): # m les ligne 
+        for n in range(N): # n les colones 
+            F[m][n]= delta_x*(1/(2*np.pi)**(1/2))*np.exp(-1j*p_grid[m]*x_grid[n])
+            
+    #matrice F-1
+    FmoinsUn = np.zeros((N, N), dtype=complex)
+    for m in range(N): # m les ligne 
+        for n in range(N): # n les colones 
+            FmoinsUn[m][n]= delta_p*(1/(2*np.pi)**(1/2))*np.exp(1j*p_grid[m]*x_grid[n])
+
+    return F, FmoinsUn
+
+
+def fourier_transform(psi,F): # psi un vecteur, F matrice de fourier
+    return (np.dot(F,psi))
+
+
+def gaussian_wave(x_, x0_, sigma, p0_) :
+    '''
+    x_ : Grille des X 
+    x0_ : centre de la fonction 
+    sigma : largeur 
+    p0_ : impulsion initial 
+    '''
+    A = (1/(((2*np.pi)**(1/2))*sigma))**(1/2)
+    
+    gaussian_wave = A* np.exp(-(((x_-x0_)**2)/(2*(sigma**2)))+1j*p0_*x_)
+    
+    return gaussian_wave
+
+
+def temps(N_=50,t=5 ):
+    dt=t/N_
+    times=np.linspace(0,t,N_)
+    return N_, t, dt, times
+
+
+def time_step(psi_, potentiel_, x_, p_, dt,F ,FmoinsUn):
+    '''
+        psi_       : tableau contenant la fonction d'onde
+        potentiel_ : tableau contenant le potentiel
+        x_         : tableau contenant les positions
+        p_         : tableau contenant les impulsions
+        dt         : le pas de temps
+        F          : matrice de fourier 
+        FmoinsUn   : matrice de l'inverse de fourier 
+    '''
+    psi_=psi_*np.exp(-1j*dt*potentiel_(x_)/2)
+    psi_tilde=fourier_transform(psi_,F)
+    psi_tilde=psi_tilde*np.exp(-1j*dt*p_**2/2)
+    psi_=fourier_transform(psi_tilde,FmoinsUn) 
+    psi_=psi_*np.exp(-1j*dt*potentiel_(x_)/2)
+    return psi_
+
+
+def time_evolution(psi0_, potentiel_, x_grid, p_grid, times,F,FmoinsUn, dt):
+    '''
+        psi0_      : tableau contenant la fonction d'onde à l'instant initial
+        potentiel_ : tableau contenant le potentiel
+        x_         : tableau contenant les positions
+        p_         : tableau contenant les impulsions
+        times      : le tableau des temps
+        F          : matrice de fourier 
+        FmoinsUn   : matrice de l'inverse de fourier 
+    '''
+    psi_=psi0_
+    psi_of_t=[psi_]
+    for i in range (len(times)):   
+        psi1_= time_step(psi_, potentiel_, x_grid, p_grid, dt,F,FmoinsUn) 
+        psi_of_t.append(psi1_)
+        psi_=psi1_
+
+    return psi_of_t 
+
+
+def animer_donnees_potentiel(donnees, x_donnees, fonction_y, potentiel, labels, params_tracés=None):
+    if params_tracés is None:
+        params_tracés = {'xlim': [x_donnees[0], x_donnees[-1]], 'ylim': [-0.1, 1.2], 'intervalle': 50}
+
+    fig, ax = plt.subplots()
+    
+    # Ligne pour |ψ|
+    ligne_psi, = ax.plot(x_donnees, fonction_y(0), label=labels[0], color='b')
+    
+    # Ligne pour le potentiel mis à l'échelle
+    V = potentiel(x_donnees.copy())
+    V_scaled = V / np.abs(V).max() * 1  # Mettre à l’échelle entre -1 et 1
+    ligne_V, = ax.plot(x_donnees, V_scaled, label="Potentiel V(x)", color='orange', linestyle='--')
+
+    ax.set_xlim(params_tracés['xlim'])
+    ax.set_ylim(params_tracés['ylim'])
+    ax.set_xlabel(labels[0])
+    ax.set_ylabel(labels[1])
+    ax.legend()
+
+    def mettre_a_jour(frame):
+        y = fonction_y(frame)
+        ligne_psi.set_ydata(y)
+        return ligne_psi, ligne_V
+
+    anim = animation.FuncAnimation(fig, mettre_a_jour, frames=np.arange(len(donnees)), interval=params_tracés['intervalle'])
+    return anim
+
+
+#Appel des fonction importante
+def valeurDeBase (Nx= 513, Xmin=-10 , Xmax= 10 , Ntime= 50, tmax= 5):
+    ''' 
+    Nx : nombre de point sur la grille
+    Xmin : X de début ( valeur de départ )
+    Xmax : x de fin ( valeur de fin )
+    Ntime : le nombre de point de temps
+    tmax : le temp d'arêt 
+    '''
+    x_grid,p_grid=grilles(Nx,Xmin,Xmax)
+    F,FmoinsUn = Fourier(Nx,Xmin,Xmax)
+    N_, t, dt, times = temps(Ntime,tmax)
+    return x_grid,p_grid, F,FmoinsUn, N_, t, dt, times
+
+
+def paramettre_gaussian (fonctionPotentiel, Nx= 513,Xmin= -10,Xmax= 10,Ntime=50,tmax=5,x0_=0,sigma=1,p0_=18 ):
+    ''' 
+    barrierePotentiel : 
+    Nx : nombre de point sur la grille
+    Xmin : X de début ( valeur de départ )
+    Xmax : x de fin ( valeur de fin )
+    Ntime : le nombre de point de temps
+    tmax : le temp d'arêt 
+    x0_ : centre de la fonction 
+    sigma : largeur 
+    p0_ : impulsion initial 
+    '''
+
+    x_grid,p_grid, F,FmoinsUn, N_, t, dt, times = valeurDeBase (Nx, Xmin,Xmax, Ntime, tmax)
+
+    #  Exemple de données évolutives (fonction d'onde à différents instants)
+    psi0=gaussian_wave(x_grid, x0_, sigma, p0_)
+    psi_of_t=time_evolution(psi0,fonctionPotentiel,x_grid,p_grid,times,F,FmoinsUn, dt)
+        
+    return x_grid,p_grid, F,FmoinsUn, N_, t, dt, times, psi_of_t
+
+
+def barrierePotentiel(x,a=7.0,b=7.5,height=50.0):
+    return np.where((x >= a) & (x <= b), height, 0)
+
+
+def barriere_douce(x, a=7.0, L=1.0, largeur=0.2, height=60.0):
+    return height * 0.5 * (np.tanh((x - a) / largeur) - np.tanh((x - (a + L)) / largeur))
+
+
+x_grid,p_grid, F,FmoinsUn, N_, t, dt, times, psi_of_t = paramettre_gaussian(barriere_douce, 2000 ,-100,100,150,5,0,1, 10 )
+
+
+def fonction_y(t_index):
+    return (np.real(psi_of_t[t_index]))
+
+# Définir les étiquettes des axes
+labels = [r'$x$', r'$\psi(x,t)$']
+
+# Paramètres du graphique (optionnels)
+params_tracés = {'xlim': [-10, 20], 'ylim': [-0.75, 0.75], 'intervalle': N_}
+
+# Appeler la fonction d'animation
+# anim2 = animer_donnees2(psi_of_t, x_grid, fonction_y, labels, params_tracés)
+anim2 = animer_donnees_potentiel(psi_of_t, x_grid, fonction_y, barriere_douce, labels, params_tracés)
+
+print("poulet")
+
+HTML(anim2.to_jshtml())
